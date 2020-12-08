@@ -1,0 +1,94 @@
+From 982aa27b78ea4802acbc187d2a08ed4dd7d33c14 Mon Sep 17 00:00:00 2001
+From: "Paul E. Murphy" <murphyp@linux.ibm.com>
+Date: Mon, 7 Dec 2020 09:00:59 -0600
+Subject: [PATCH] gnulib: Merge ldbl128==ieee128 upstream support into cdefs.h
+
+This patch needs to be upstreamed.  This cdefs.h is somewhat
+forked from glibc.
+
+---8<---
+
+Merge the support needed to enable the redirects to the
+new ABI when long double is ieee128 format on ppc64.
+---
+ gnulib/import/cdefs.h       | 37 +++++++++++++++++++++++++++++++++++--
+ gnulib/import/libc-config.h |  1 +
+ 2 files changed, 36 insertions(+), 2 deletions(-)
+
+diff --git a/gnulib/import/cdefs.h b/gnulib/import/cdefs.h
+index d8e4a00033..dd4e7aadbe 100644
+--- a/gnulib/import/cdefs.h
++++ b/gnulib/import/cdefs.h
+@@ -449,7 +449,37 @@
+ # include <bits/long-double.h>
+ #endif
+ 
+-#if defined __LONG_DOUBLE_MATH_OPTIONAL && defined __NO_LONG_DOUBLE_MATH
++#if __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI == 1
++# ifdef __REDIRECT
++
++/* Alias name defined automatically.  */
++#  define __LDBL_REDIR(name, proto) ... unused__ldbl_redir
++#  define __LDBL_REDIR_DECL(name) \
++  extern __typeof (name) name __asm (__ASMNAME ("__" #name "ieee128"));
++
++/* Alias name defined automatically, with leading underscores.  */
++#  define __LDBL_REDIR2_DECL(name) \
++  extern __typeof (__##name) __##name \
++    __asm (__ASMNAME ("__" #name "ieee128"));
++
++/* Alias name defined manually.  */
++#  define __LDBL_REDIR1(name, proto, alias) ... unused__ldbl_redir1
++#  define __LDBL_REDIR1_DECL(name, alias) \
++  extern __typeof (name) name __asm (__ASMNAME (#alias));
++
++#  define __LDBL_REDIR1_NTH(name, proto, alias) \
++  __REDIRECT_NTH (name, proto, alias)
++#  define __REDIRECT_NTH_LDBL(name, proto, alias) \
++  __LDBL_REDIR1_NTH (name, proto, __##alias##ieee128)
++
++/* Unused.  */
++#  define __REDIRECT_LDBL(name, proto, alias) ... unused__redirect_ldbl
++#  define __LDBL_REDIR_NTH(name, proto) ... unused__ldbl_redir_nth
++
++# else
++_Static_assert (0, "IEEE 128-bits long double requires redirection on this platform");
++# endif
++#elif defined __LONG_DOUBLE_MATH_OPTIONAL && defined __NO_LONG_DOUBLE_MATH
+ # define __LDBL_COMPAT 1
+ # ifdef __REDIRECT
+ #  define __LDBL_REDIR1(name, proto, alias) __REDIRECT (name, proto, alias)
+@@ -458,6 +488,8 @@
+ #  define __LDBL_REDIR1_NTH(name, proto, alias) __REDIRECT_NTH (name, proto, alias)
+ #  define __LDBL_REDIR_NTH(name, proto) \
+   __LDBL_REDIR1_NTH (name, proto, __nldbl_##name)
++#  define __LDBL_REDIR2_DECL(name) \
++  extern __typeof (__##name) __##name __asm (__ASMNAME ("__nldbl___" #name));
+ #  define __LDBL_REDIR1_DECL(name, alias) \
+   extern __typeof (name) name __asm (__ASMNAME (#alias));
+ #  define __LDBL_REDIR_DECL(name) \
+@@ -468,7 +500,8 @@
+   __LDBL_REDIR1_NTH (name, proto, __nldbl_##alias)
+ # endif
+ #endif
+-#if !defined __LDBL_COMPAT || !defined __REDIRECT
++#if (!defined __LDBL_COMPAT && __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI == 0) \
++    || !defined __REDIRECT
+ # define __LDBL_REDIR1(name, proto, alias) name proto
+ # define __LDBL_REDIR(name, proto) name proto
+ # define __LDBL_REDIR1_NTH(name, proto, alias) name proto __THROW
+diff --git a/gnulib/import/libc-config.h b/gnulib/import/libc-config.h
+index 1300c3a2ac..67620212d3 100644
+--- a/gnulib/import/libc-config.h
++++ b/gnulib/import/libc-config.h
+@@ -100,6 +100,7 @@
+ #undef __LDBL_REDIR
+ #undef __LDBL_REDIR1
+ #undef __LDBL_REDIR1_DECL
++#undef __LDBL_REDIR2_DECL
+ #undef __LDBL_REDIR1_NTH
+ #undef __LDBL_REDIR_DECL
+ #undef __LDBL_REDIR_NTH
+-- 
+2.26.2
+
