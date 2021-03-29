@@ -1,0 +1,57 @@
+From 4ccd83416101a8660721bfff9e1709984e4f7c1a Mon Sep 17 00:00:00 2001
+From: Matheus Castanho <msc@linux.ibm.com>
+Date: Mon, 29 Mar 2021 12:08:33 -0300
+Subject: [PATCH] Do not build Decimal/Float128 conversions if
+ --disable-decimal-float
+
+Rebased version of [1].
+
+[1] https://gcc.gnu.org/pipermail/gcc-patches/2021-March/566314.html
+---
+ libgcc/config/rs6000/t-float128 | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/libgcc/config/rs6000/t-float128 b/libgcc/config/rs6000/t-float128
+index 6fb1a3d871b..6c2f680da4d 100644
+--- a/libgcc/config/rs6000/t-float128
++++ b/libgcc/config/rs6000/t-float128
+@@ -23,8 +23,10 @@ fp128_softfp_shared_obj	= $(addsuffix -sw_s$(objext),$(fp128_softfp_funcs))
+ fp128_softfp_obj	= $(fp128_softfp_static_obj) $(fp128_softfp_shared_obj)
+ 
+ # Decimal <-> _Float128 conversions
++ifeq ($(decimal_float),yes)
+ fp128_dec_funcs		= _kf_to_sd _kf_to_dd _kf_to_td \
+ 			  _sd_to_kf _dd_to_kf _td_to_kf
++endif
+ 
+ # _Float128 to/from string conversions that must be compiled with IBM 128-bit
+ # long double.
+@@ -85,11 +87,13 @@ $(fp128_obj)		 : $(srcdir)/config/rs6000/quad-float128.h
+ # Force the TF mode to/from decimal functions to be compiled with IBM long
+ # double.  Add building the KF mode to/from decimal conversions with explict
+ # IEEE long double.
++ifeq ($(decimal_float),yes)
+ fp128_dec_objs		= $(addsuffix $(objext),$(fp128_dec_funcs)) \
+ 			  $(addsuffix _s$(objext),$(fp128_dec_funcs))
+ 
+ fp128_decstr_objs	= $(addsuffix $(objext),$(fp128_decstr_funcs)) \
+ 			  $(addsuffix _s$(objext),$(fp128_decstr_funcs))
++endif
+ 
+ ibm128_dec_objs		= $(addsuffix $(objext),$(ibm128_dec_funcs)) \
+ 			  $(addsuffix _s$(objext),$(ibm128_dec_funcs))
+@@ -97,8 +101,11 @@ ibm128_dec_objs		= $(addsuffix $(objext),$(ibm128_dec_funcs)) \
+ FP128_CFLAGS_DECIMAL	= -mno-gnu-attribute -Wno-psabi -mabi=ieeelongdouble
+ IBM128_CFLAGS_DECIMAL	= -mno-gnu-attribute -Wno-psabi -mabi=ibmlongdouble
+ 
++ifeq ($(decimal_float),yes)
+ $(fp128_dec_objs)	: INTERNAL_CFLAGS += $(FP128_CFLAGS_DECIMAL)
+ $(fp128_decstr_objs)	: INTERNAL_CFLAGS += $(IBM128_CFLAGS_DECIMAL)
++endif
++
+ $(ibm128_dec_objs)	: INTERNAL_CFLAGS += $(IBM128_CFLAGS_DECIMAL)
+ 
+ $(fp128_decstr_objs)	: $(srcdir)/config/rs6000/_strtokf.h \
+-- 
+2.30.2
+
